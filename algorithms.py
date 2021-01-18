@@ -126,15 +126,15 @@ def myKmeanHartigan(data, k):
 
             
 
-# here some thoughts: 
+# here some thoughts: (this piece of code makes sense, in fact it converge quite straight forward)
 data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
 clusters,label,centers = myKmeanHartigan(data, 3)
 print(clusters,label,centers)
 
+# but here it turns out it does not converge :( 
 print("Task 3 (b) ...")
 img = cv.imread(images_path + 'img_t003.png')
 it = [2]
-    # Color_image
 img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 img_c_rs = img.reshape((-1, 3))
 img_c_rs = np.float32(img_c_rs)
@@ -144,6 +144,8 @@ for k in it:
     res_c = centers_c[label_c.flatten()]
     result_image_c = res_c.reshape((img_c.shape))
     display_image(str(k), result_image_c)
+
+# if you run this part it will work (cause it converges):) 
 
 # print("Task 3 (b) ...")
 # img = cv.imread(images_path + 'img_t003.png')
