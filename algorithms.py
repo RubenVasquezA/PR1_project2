@@ -5,6 +5,7 @@ import random
 from numpy import linalg as LA
 import cv2 as cv
 from numpy import random
+import copy
 
 
 images_path = './imgs/original/'
@@ -83,12 +84,21 @@ def findCluster(clusters,instance):
         if instance in clusters[c]:
             return c
 
-def cw(point,centers):
-    d = []
-    for c in centers:
-        d.append(LA.norm(point-c))
-    d = np.asanyarray(d)
-    return np.argsort(d)[0]
+def cw(clusters,centers,data,index):
+    clustersCopy = copy.deepcopy(clusters)
+    for c in clustersCopy:
+        clustersCopy[c].append(index)
+    #print("inside of the function:",clustersCopy)
+    # to find the minimun 
+    E = []
+    for i in range(centers.shape[0]):
+        d = []
+        for c in clustersCopy:
+            d.append(LA.norm(data[clustersCopy[c]]-centers[i]))
+        E.append(LA.norm(np.asarray(d)))
+    return np.argsort(E)[0]
+
+
 
 def labeling(clusters,data):
     k = len(clusters)
@@ -105,16 +115,17 @@ def myKmeanHartigan(data, k):
     #print(assigned_cluster)
     centers = assignedCenters(assigned_cluster,data)
     #print(centers)
-    convergence = False
+    convergence = True
     iterationNo=0
-    while not convergence:
+    while convergence:
+        convergence = True
         for j in range(data.shape[0]):
             i_index = findCluster(assigned_cluster,j)
             assigned_cluster[i_index].remove(j)
             centers = assignedCenters(assigned_cluster,data)
-            w_index = cw(data[j],centers) 
+            w_index = cw(assigned_cluster,centers,data,j)
             if w_index != i_index:
-                convergence = True
+                convergence = False
             assigned_cluster[w_index].append(j)
             centers = assignedCenters(assigned_cluster,data)
             iterationNo += 1
@@ -127,9 +138,9 @@ def myKmeanHartigan(data, k):
             
 
 # here some thoughts: (this piece of code makes sense, in fact it converge quite straight forward)
-data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
-clusters,label,centers = myKmeanHartigan(data, 3)
-print(clusters,label,centers)
+#data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
+#clusters,label,centers = myKmeanHartigan(data, 3)
+#print(clusters,label,centers)
 
 # but here it turns out it does not converge :( 
 print("Task 3 (b) ...")
@@ -140,10 +151,10 @@ img_c_rs = img.reshape((-1, 3))
 img_c_rs = np.float32(img_c_rs)
 display_image("Original image", img_c)
 for k in it:
-    (assigned_cluster_c,label_c, centers_c) = myKmeanHartigan(img_c_rs / 255, k)
-    res_c = centers_c[label_c.flatten()]
-    result_image_c = res_c.reshape((img_c.shape))
-    display_image(str(k), result_image_c)
+  (assigned_cluster_c,label_c, centers_c) = myKmeanHartigan(img_c_rs / 255, k)
+  res_c = centers_c[label_c.flatten()]
+  result_image_c = res_c.reshape((img_c.shape))
+  display_image(str(k), result_image_c)
 
 # if you run this part it will work (cause it converges):) 
 
