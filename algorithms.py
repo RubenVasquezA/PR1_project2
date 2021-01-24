@@ -60,7 +60,7 @@ def myKmeanLoyds(data, k):
             print('iterationNo = ', iterationNo)
     centers = np.uint8(centers * 255)
     index = np.uint8(index)
-    return index, centers
+    return clusters,index, centers
 
 def assignedCluster(data,k):
     clusters = {i:[] for i in range(k)}
@@ -82,6 +82,7 @@ def assignedCenters(clusters,data):
 def findCluster(clusters,instance):
     for c in clusters:
         if instance in clusters[c]:
+            print(c)
             return c
 
 def cw(clusters,centers,data,index):
@@ -115,12 +116,14 @@ def myKmeanHartigan(data, k):
     #print(assigned_cluster)
     centers = assignedCenters(assigned_cluster,data)
     #print(centers)
-    convergence = True
+    convergence = False
     iterationNo=0
-    while convergence:
+    while not convergence:
         convergence = True
         for j in range(data.shape[0]):
+            #print("here assigned_cluster:",assigned_cluster)
             i_index = findCluster(assigned_cluster,j)
+            print("here i_index,j:",i_index,j)
             assigned_cluster[i_index].remove(j)
             centers = assignedCenters(assigned_cluster,data)
             w_index = cw(assigned_cluster,centers,data,j)
@@ -135,40 +138,88 @@ def myKmeanHartigan(data, k):
     label = np.uint8(label)
     return assigned_cluster,label,centers
 
+def LDA(clusters,data):
+    # From our k-meand algo
+    # cluster has the follows: {"cluster_j":[x_i]}
+    # example assigned_cluster: {"0":[[1,2],[3,4]],"1":[[5,6],[9,8]],...}
+    # let's compute means and covariance:
+
+    N = data.shape[0]
+    k = len(clusters)
+    #clusters = {i:[] for i in range(k)}
+    mu_g = np.mean(data,axis=0) #mean of overall data
+    mu_c = [] #mean of each cluster
+    covariance =  []
+    S_W = 0
+    S_B = 0
+    #mu = {i:[] for i in range(k)}, in the case we work with dict
+    #covariance = {i:[] for i in range(k)}
+    for c in clusters:
+        print("here")
+        mu_c.append(np.mean(np.asarray(c),axis=0))
+        covariance.append(np.cov((np.asarray(c)).T))
+
+    print("clusters:",len(clusters))
+    print("covariance:",len(covariance))
+    print("mu_c:",len(mu_c))
+
+    for co in covariance:
+        if len(co)!=0:
+            S_W = S_W + co
+
+    for mu in mu_c:
+        if len(mu)!=0:
+            S_B = S_B + np.dot((mu_g-mu_c).T,(mu_g-mu_c))
+
+    inv_S_W = np.linalg.inv(S_W)
+    eig_vals, eig_vecs = np.linalg.eig(inv_S_W.dot(S_B))
+
+    return eig_vals,eig_vecs
+
             
 
-# here some thoughts: (this piece of code makes sense, in fact it converge quite straight forward)
-#data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
-#clusters,label,centers = myKmeanHartigan(data, 3)
-#print(clusters,label,centers)
+#here some thoughts: (this piece of code makes sense, in fact it converge quite straight forward)
+# data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
+# clusters,label,centers = myKmeanHartigan(data, 2)
+# print(clusters,label,centers)
 
 # but here it turns out it does not converge :( 
+# print("Task 3 (b) ...")
+# img = cv.imread(images_path + 'img_t003.png')
+# it = [2]
+# img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+# img_c_rs = img.reshape((-1, 3))
+# img_c_rs = np.float32(img_c_rs)
+# print("here the shape:",img_c_rs.shape)
+# display_image("Original image", img_c)
+# for k in it:
+#     (assigned_cluster_c,label_c, centers_c) = myKmeanHartigan(img_c_rs / 255, k)
+#     res_c = centers_c[label_c.flatten()]
+#     result_image_c = res_c.reshape((img_c.shape))
+#     display_image(str(k), result_image_c)
+
+# if you run this part it will work (cause it converges):) 
+
 print("Task 3 (b) ...")
 img = cv.imread(images_path + 'img_t003.png')
 it = [2]
+    # Color_image
 img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 img_c_rs = img.reshape((-1, 3))
 img_c_rs = np.float32(img_c_rs)
 display_image("Original image", img_c)
 for k in it:
-  (assigned_cluster_c,label_c, centers_c) = myKmeanHartigan(img_c_rs / 255, k)
-  res_c = centers_c[label_c.flatten()]
-  result_image_c = res_c.reshape((img_c.shape))
-  display_image(str(k), result_image_c)
+    (clusters, label_c, centers_c) = myKmeanLoyds(img_c_rs / 255, k)
+    res_c = centers_c[label_c.flatten()]
+    result_image_c = res_c.reshape((img_c.shape))
+    display_image(str(k), result_image_c)
 
-# if you run this part it will work (cause it converges):) 
 
-# print("Task 3 (b) ...")
-# img = cv.imread(images_path + 'img_t003.png')
-# it = [2]
-#     # Color_image
-# img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-# img_c_rs = img.reshape((-1, 3))
-# img_c_rs = np.float32(img_c_rs)
-# display_image("Original image", img_c)
-# for k in it:
-#     (label_c, centers_c) = myKmeanLoyds(img_c_rs / 255, k)
-#     res_c = centers_c[label_c.flatten()]
-#     result_image_c = res_c.reshape((img_c.shape))
-#     display_image(str(k), result_image_c)
+eig_vals,eig_vecs = LDA(clusters,img_c_rs / 255)
+print(eig_vals,eig_vecs)
+
     
+        
+
+
+
