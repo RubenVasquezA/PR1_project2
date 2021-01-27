@@ -8,8 +8,6 @@ from numpy import random
 import copy
 
 
-images_path = './imgs/original/'
-
 def display_image(name, img):
     img = np.array(img).clip(min=0, max=255).astype(np.uint8)
     cv.imshow(name, img)
@@ -89,7 +87,6 @@ def cw(clusters,centers,data,index):
     clustersCopy = copy.deepcopy(clusters)
     for c in clustersCopy:
         clustersCopy[c].append(index)
-    #print("inside of the function:",clustersCopy)
     # to find the minimun 
     E = []
     for i in range(centers.shape[0]):
@@ -139,29 +136,31 @@ def myKmeanHartigan(data, k):
     return assigned_cluster,label,centers
 
 def LDA(clusters,data):
-    # From our k-meand algo
-    # cluster has the follows: {"cluster_j":[x_i]}
-    # example assigned_cluster: {"0":[[1,2],[3,4]],"1":[[5,6],[9,8]],...}
-    # let's compute means and covariance:
-
+    "From our k-meand algo"
+    "cluster has the follows: {cluster_j:[x_i]}"
+    "example assigned_cluster: {0:[[1,2],[3,4]],1:[[5,6],[9,8]],...}"
+    "let's compute means and covariance"
     N = data.shape[0]
     k = len(clusters)
     #clusters = {i:[] for i in range(k)}
     mu_g = np.mean(data,axis=0) #mean of overall data
     mu_c = [] #mean of each cluster
     covariance =  []
+    # according to lecture mu_j and sigma_j play a role very important to compute theta
+    mu_j = []
+    sigma_j = []
+
     S_W = 0
     S_B = 0
     #mu = {i:[] for i in range(k)}, in the case we work with dict
     #covariance = {i:[] for i in range(k)}
-    for c in clusters:
-        print("here")
+    for c in clusters:#
         mu_c.append(np.mean(np.asarray(c),axis=0))
         covariance.append(np.cov((np.asarray(c)).T))
 
-    print("clusters:",len(clusters))
-    print("covariance:",len(covariance))
-    print("mu_c:",len(mu_c))
+    #print("clusters:",len(clusters))
+    #print("covariance:",len(covariance))
+    #print("mu_c:",len(mu_c))
 
     for co in covariance:
         if len(co)!=0:
@@ -170,14 +169,76 @@ def LDA(clusters,data):
     for mu in mu_c:
         if len(mu)!=0:
             S_B = S_B + np.dot((mu_g-mu_c).T,(mu_g-mu_c))
+    if k==2:
+        inv_S_W = np.linalg.inv(S_W)
+        W = np.dot(inv_S_W,mu_c[0]-mu_c[1])
+        mu_j = [np.dot(W.T,mu) for mu in mu_c]
+        sigma_j = [np.dot(W.T,np.dot(co,W)) for co in covariance]
+        a = sigma_j[1]*mu_j[0]-sigma_j[0]*mu_j[1]
+        b = sigma_j[0]*mu_j[1]**2 - sigma_j[1]*mu_j[0]**2 + 2*sigma_j[0]*sigma_j[1]*np.log(sigma_j[1]/sigma_j[0])
+        c = sigma_j[0]-sigma_j[1]
+        first_term = sigma_j[1]*mu_j[0]-sigma_j[0]*mu_j[1]
+        second_term = np.sqrt((a/c)**2-(b/c))
+        theta= first_term + second_term
+        if theta>=mu_j[0] and theta<=mu_j[1]:
+            return W,theta
+        else:
+            theta= first_term - second_term
+            return W,theta
+    else:
+        inv_S_W = np.linalg.inv(S_W)
+        W = np.linalg.eig(inv_S_W.dot(S_B))
+        # TODO
+        return W
 
-    inv_S_W = np.linalg.inv(S_W)
-    eig_vals, eig_vecs = np.linalg.eig(inv_S_W.dot(S_B))
+def LDAClassification(W,x,thetha):
+    y = np.dot(W.T,x)
+    if y>thetha:
+        return 1
+    else:
+        return 0
+    
+def SVM(X,y,C=1,T=1000):
 
-    return eig_vals,eig_vecs
+    m,n = X.shape
+    Z = X*y
+    I = np.eye(N)
+    M = np.dot(Z.T,Z) + np.outer(y,y) + 1./C + I
 
-            
+    mu = 1./n * np.ones(N)
+    for t in range(T):
+        eta = 2./(t+2)
+        grd = 2*np.dot(M,mu)
+        mu += eta*(I[np.argmin(grd)]-mu)
+    w = np.dot(Z,mu)
+    w0 = np.dot(mu,y)
+    return w,w0
 
+def checkPatch(patch,center_x,center_y):
+    "Here we would think to check if a center patch(neighborhood) has enough non-zero points"
+    #TODO
+    return 
+
+def generateInputs(image,w_x=4,h_y=4):
+    "Given: an masked image"
+    "wanted: to extract the inputs which can be found in a certain patch"
+    "inputs: an image, w_x,h_y"
+    "output: x which represents the input what we want to classify later on"
+    x = []
+    w,h = image.shape
+    for i in range(w):
+        for j in range(h):
+            if (j+h_y<h and j-h_y>0) and (i+w_x<w and i-w_x>0):
+                if np.sum(image[i,j])==0 or np.sum(image[i,j])==1 :
+                    patch=image[i-w_x:i+w_x,j-h_y:j+h_y]
+                    #inputs = checkPatch(patch,i,j)
+                    x.append(patch.reshape(-1,3))
+    return x
+
+
+
+
+ 
 #here some thoughts: (this piece of code makes sense, in fact it converge quite straight forward)
 # data = np.array([[1,2,3,5,6],[3,5,7,7,6],[2,6,8,4,3],[1,2,5,1,6],[8,9,10,9,8],[1,4,3,6,5],[2,3,4,5,4]])
 # clusters,label,centers = myKmeanHartigan(data, 2)
@@ -200,26 +261,32 @@ def LDA(clusters,data):
 
 # if you run this part it will work (cause it converges):) 
 
-print("Task 3 (b) ...")
-img = cv.imread(images_path + 'img_t003.png')
-it = [2]
-    # Color_image
-img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-img_c_rs = img.reshape((-1, 3))
-img_c_rs = np.float32(img_c_rs)
-display_image("Original image", img_c)
-for k in it:
-    (clusters, label_c, centers_c) = myKmeanLoyds(img_c_rs / 255, k)
-    res_c = centers_c[label_c.flatten()]
-    result_image_c = res_c.reshape((img_c.shape))
-    display_image(str(k), result_image_c)
+#print("Task 3 (b) ...")
+#images_path_original = './imgs/original/'
+#images_path_mask = './imgs/mask/'
+
+#img = cv.imread(images_path_original + 'img_t003.png')
+#img_mask = cv.imread(images_path_mask + 'img_t003.png')
+#it = [2]
+# Color_image
+#img_c = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+#img_c_rs = img.reshape((-1, 3))
+#img_c_rs = np.float32(img_c_rs)
+
+#display_image("Original image", img_c)
+#for k in it:
+#    (clusters, label_c, centers_c) = myKmeanLoyds(img_c_rs / 255, k)
+#    res_c = centers_c[label_c.flatten()]
+#    result_image_c = res_c.reshape((img_c.shape))
+#    display_image(str(k), result_image_c)
 
 
-eig_vals,eig_vecs = LDA(clusters,img_c_rs / 255)
-print(eig_vals,eig_vecs)
-
+#W = LDA(clusters,img_c_rs / 255)
+#print(W)
+#X,y = SVM(img_c_rs/255,label_c)
+#print(X,y)
     
-        
+
 
 
 
