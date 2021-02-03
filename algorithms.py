@@ -168,7 +168,7 @@ def LDA(clusters,data):
 
     for mu in mu_c:
         if len(mu)!=0:
-            S_B = S_B + np.dot((mu_g-mu_c).T,(mu_g-mu_c))
+            S_B = S_B + np.dot((mu_g-mu).T,(mu_g-mu))
     if k==2:
         inv_S_W = np.linalg.inv(S_W)
         W = np.dot(inv_S_W,mu_c[0]-mu_c[1])
